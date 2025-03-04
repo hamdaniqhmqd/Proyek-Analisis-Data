@@ -3,7 +3,7 @@ import pandas as pd
 import os
 
 # Path ke file CSV
-data_path = "Bike-sharing-dataset/day.csv"
+data_path = "../Data/day.csv"
 
 # Load data
 def load_data():
