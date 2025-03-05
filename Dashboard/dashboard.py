@@ -1,5 +1,7 @@
 import streamlit as st
 import pandas as pd
+import seaborn as sns
+import matplotlib.pyplot as plt
 
 # Konfigurasi Halaman
 st.set_page_config(page_title="Dashboard Penyewaan Sepeda", layout="wide")
@@ -12,81 +14,79 @@ def load_data():
 
 data = load_data()
 
-# Sidebar untuk Filter
-st.sidebar.header("🔍 Filter Data")
-selected_month = st.sidebar.slider("Pilih Bulan", 1, 12, (1, 12))
-selected_weather = st.sidebar.multiselect(
-    "Pilih Kondisi Cuaca", options=data["weathersit"].unique(), default=data["weathersit"].unique()
-)
-
-# Filter data berdasarkan bulan dan cuaca
-filtered_data = data[
-    (data["dteday"].dt.month >= selected_month[0]) & (data["dteday"].dt.month <= selected_month[1]) &
-    (data["weathersit"].isin(selected_weather))
-]
+# Tampilkan Dataset
+st.write("## \U0001F4C1 Dataset Penyewaan Sepeda")
+st.dataframe(data)
 
 # Judul Dashboard
 st.title("📊 Dashboard Penyewaan Sepeda 🚲")
 st.markdown("Analisis penyewaan sepeda berdasarkan cuaca dan waktu.")
 
-# --- Tabel Dataset ---
-st.write("## 📄 Dataset Penyewaan Sepeda")
-st.dataframe(filtered_data.head(15))  # Menampilkan 10 data pertama setelah difilter
+# --- Analisis 1: Penyewaan Sepeda Per Bulan dan Pengaruh Cuaca ---
+st.write("## 📆 Penyewaan Sepeda Per Bulan dan Pengaruh Cuaca")
 
-# --- Analisis 1: Pengaruh Cuaca terhadap Penyewaan ---
-st.write("## ☀️ Pengaruh Cuaca terhadap Penyewaan Sepeda")
-st.markdown(
-    """
-    Cuaca sangat mempengaruhi jumlah penyewaan sepeda.  
-    Berikut ini adalah grafik jumlah penyewaan berdasarkan suhu (*temp*), suhu terasa (*atemp*), dan kelembaban (*hum*) per bulan.
-    """
-)
+fig, ax = plt.subplots(figsize=(14, 6))
+sns.lineplot(data=data, x="mnth", y="cnt", hue="weathersit", marker="o", palette="viridis", ax=ax)
+ax.set_title("Tren Penyewaan Sepeda Berdasarkan Kondisi Cuaca", size=18)
+ax.set_xlabel("Bulan", size=14)
+ax.set_ylabel("Jumlah Penyewaan", size=14)
+ax.legend(title="Kondisi Cuaca")
+st.pyplot(fig)
 
-# Agregasi data per bulan untuk suhu, suhu terasa, dan kelembaban
-monthly_data = filtered_data.groupby(filtered_data["dteday"].dt.month)[["temp", "atemp", "hum", "cnt"]].mean()
+fig, ax = plt.subplots(figsize=(14, 6))
+sns.barplot(data=data, x="mnth", y="cnt", palette="coolwarm", ax=ax)
+ax.set_title("Jumlah Penyewaan Sepeda Per Bulan", size=18)
+ax.set_xlabel("Bulan", size=14)
+ax.set_ylabel("Jumlah Penyewaan", size=14)
+st.pyplot(fig)
 
-# Menampilkan data dalam satu frame
-st.line_chart(monthly_data)
-
-st.markdown(
-    """
-    **Kesimpulan:**
-    - Semakin tinggi suhu (*temp*), jumlah penyewaan cenderung meningkat.
-    - Suhu terasa (*atemp*) juga memiliki pola yang mirip dengan suhu.
-    - Kelembaban (*hum*) tinggi dapat menyebabkan penurunan jumlah penyewaan.
-    """
-)
+st.markdown("""
+**Kesimpulan:**
+- Tren penyewaan cenderung meningkat pada bulan-bulan tertentu.
+- Faktor eksternal seperti musim dan liburan mungkin berpengaruh.
+""")
 
 # --- Analisis 2: Jam Puncak Penyewaan Sepeda ---
 st.write("## ⏰ Jam Puncak Penyewaan Sepeda")
-st.markdown(
-    """
-    Grafik berikut menunjukkan jumlah rata-rata penyewaan sepeda pada setiap jam dalam sehari.
-    """
-)
 
 # Hitung rata-rata penyewaan per jam
-hourly_rental = filtered_data.groupby("hr")["cnt"].mean().reset_index()
+hourly_rental = data.groupby("hr")["cnt"].mean().reset_index()
+peak_hour = hourly_rental.loc[hourly_rental["cnt"].idxmax()]
 
-# Visualisasi jam puncak penyewaan
+fig, ax = plt.subplots(figsize=(10, 5))
+sns.barplot(data=hourly_rental, x="hr", y="cnt", palette="coolwarm", ax=ax)
+ax.axvline(peak_hour["hr"], color='red', linestyle='--', label=f'Puncak: {peak_hour["hr"]}')
+ax.set_xlabel("Jam")
+ax.set_ylabel("Rata-rata Penyewaan Sepeda")
+ax.set_title("Jumlah Penyewaan Sepeda per Jam")
+ax.legend()
+st.pyplot(fig)
+
 st.bar_chart(hourly_rental.set_index("hr"))
 
-st.markdown(
-    """
-    **Kesimpulan:**
-    - Penyewaan sepeda mencapai puncaknya pada jam **07:00 - 09:00 (pagi)** dan **17:00 - 19:00 (sore)**.
-    - Pola ini mengikuti aktivitas harian seperti jam kerja dan jam sekolah.
-    """
-)
+st.markdown(f"""
+**Kesimpulan:**
+- Penyewaan sepeda mencapai puncak pada jam **{peak_hour['hr']}**.
+- Pola ini mengikuti jam kerja dan aktivitas harian.
+""")
+
+# --- Analisis 3: Perbandingan Penyewaan Sepeda per Tahun ---
+st.write("## 📊 Perbandingan Penyewaan Sepeda per Tahun")
+
+fig, ax = plt.subplots(figsize=(10, 6))
+sns.barplot(data=data, x="yr", y="cnt", palette="magma", errorbar=None, ax=ax)
+ax.set_xlabel("Tahun")
+ax.set_ylabel("Rata-rata Jumlah Penyewaan Sepeda")
+ax.set_title("Perbandingan Penyewaan Sepeda per Tahun")
+st.pyplot(fig)
+
+st.bar_chart(data.groupby("yr")["cnt"].sum())
 
 # --- Kesimpulan Umum ---
 st.write("## 📌 Kesimpulan Akhir")
-st.markdown(
-    """
-    - **Cuaca berpengaruh terhadap penyewaan sepeda.** Penyewaan lebih tinggi saat cuaca cerah dan suhu nyaman.
-    - **Suhu, suhu terasa, dan kelembaban mempengaruhi jumlah penyewaan.** Semakin panas, semakin banyak penyewaan, tetapi kelembaban tinggi bisa menurunkannya.
-    - **Jam puncak penyewaan terjadi di pagi dan sore hari.** Hal ini mengikuti jadwal kerja dan sekolah.
-    """
-)
+st.markdown("""
+- **Penyewaan sepeda mengalami pola fluktuatif sepanjang tahun.**
+- **Jam puncak penyewaan terjadi di pagi dan sore hari.**
+""")
 
-st.write("🚀 Dibuat dengan ❤️ menggunakan Streamlit dan Pandas.")
+st.write("🚀 Dibuat dengan ❤️ menggunakan Streamlit.")
