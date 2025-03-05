@@ -1,3 +1,7 @@
 Link dari streamlit
 
 https://proyek-data-dicoding.streamlit.app/
+
+Link repository github
+
+https://github.com/hamdaniqhmqd/Proyek-Analisis-Data.git
